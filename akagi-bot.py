@@ -1,4 +1,5 @@
 import discord, asyncio, sys, logging
+from webp_resolver import WebpResolver
 from discord.ext import commands
 from functools import wraps
 
@@ -34,6 +35,7 @@ COLOR_ROLES = {
 #=== Environment configuration =====================================================
 #===================================================================================
 
+
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 if not logger.hasHandlers():
@@ -42,6 +44,9 @@ if not logger.hasHandlers():
     formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
+
+# Instance of WebpResolver for image resolution tasks
+webp_resolver = WebpResolver(logger)
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -81,6 +86,8 @@ async def on_message(message):
         role = message.guild.get_role(ROLE_JARI_ID)
         await message.author.remove_roles(role)
         await message.channel.send("Your Jari role has been removed, Shikikan.")
+    elif (urls := webp_resolver.resolve(message)) is not None:
+        pass # TODO: Handle resolved URLs
 
     await bot.process_commands(message)
 
