@@ -165,4 +165,4 @@ def load_token(filepath=token_file):
         logger.error(f"Error: File '{filepath}' not found.")
 
 # Replace with your bot token
-bot.run(load_token())
+bot.run(load_token()) 
