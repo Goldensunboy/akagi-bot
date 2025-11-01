@@ -30,6 +30,11 @@ COLOR_ROLES = {
     "green": 1216454315015671808
 }
 
+BOT_ADMINS = [
+    188646158636285952, # crocdent
+    202142045114990592  # goldensunboy
+]
+
 #===================================================================================
 #=== Environment configuration =====================================================
 #===================================================================================
@@ -155,7 +160,9 @@ async def color(ctx, color_name: str = None):
 
 @bot.command(cls=LoggingWrapper)
 async def host(ctx):
-    if not (ctx.author.guild_permissions.administrator or MOD_ROLE_ID in [role.id for role in ctx.author.roles]):
+    if ctx.guild is not None:
+        return # this command can only be used in a DM
+    if ctx.author.id not in BOT_ADMINS:
         await ctx.send("Sorry Shikikan, but you aren't allowed to use this command.")
         return
     
