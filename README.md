@@ -28,7 +28,6 @@ Add/remove jari role (requires CL, CV or BB role to add):
 ```
 .iam jari squad
 .iamn jari squad
-
 ```
 
 Display IP address where the bot is running (requires administrator role):
