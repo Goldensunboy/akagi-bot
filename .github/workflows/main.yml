@@ -22,6 +22,7 @@ jobs:
     - name: Deploy to bot host
       run: |
         ssh -i ~/.ssh/id_ed25519 github-cicd@${{ secrets.BOT_HOST }} << 'EOF'
+          git config --global --add safe.directory /home/akagi-bot
           cd akagi-bot
           git pull origin main
           sudo systemctl restart akagi-bot.service
