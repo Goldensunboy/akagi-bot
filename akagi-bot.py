@@ -1,4 +1,4 @@
-import discord, asyncio, sys, logging
+import discord, asyncio, sys, logging, requests
 from discord.ext import commands
 from functools import wraps
 
@@ -33,6 +33,7 @@ COLOR_ROLES = {
 #===================================================================================
 #=== Environment configuration =====================================================
 #===================================================================================
+
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
@@ -151,6 +152,17 @@ async def color(ctx, color_name: str = None):
     new_role = ctx.guild.get_role(COLOR_ROLES[color_name])
     await member.add_roles(new_role)
     await ctx.send("There you go Shikikan, you look great in that color!")
+
+@bot.command(cls=LoggingWrapper)
+async def host(ctx):
+    if not (ctx.author.guild_permissions.administrator or MOD_ROLE_ID in [role.id for role in ctx.author.roles]):
+        await ctx.send("Sorry Shikikan, but you aren't allowed to use this command.")
+        return
+    
+    response = requests.get("https://api.ipify.org/")
+    if response.status_code == 200:
+        ip = response.text
+        await ctx.send(f"Shikikan, I am currently located at: {ip}")
 
 #===================================================================================
 #=== Run the bot ===================================================================
