@@ -1,4 +1,4 @@
-import discord, asyncio, sys, logging, requests
+import discord, asyncio, sys, logging, requests, traceback
 from discord.ext import commands
 from get_image import GetImage
 
@@ -69,7 +69,11 @@ get_img = GetImage(logger)
 class LoggingWrapper(commands.Command):
     async def invoke(self, ctx):
         logger.info(f"User {ctx.author} invoked command '{ctx.message.content}'")
-        await super().invoke(ctx)
+        try:
+            await super().invoke(ctx)
+        except Exception as e:
+            st = traceback.format_exc()
+            await ctx.send(f"Oh dear, Shikikan-sama... I seem to have tripped while trying to service your request. I'm so sorry! Here are some details which might be of use:\n```{e}\n{st}```")
 
 @bot.event
 async def on_ready():
@@ -146,7 +150,7 @@ async def color(ctx: commands.Context, color_name: str = None):
 
     color_name = color_name.lower()
     if color_name not in COLOR_ROLES:
-        await ctx.send("Sorry shikikan, I do not recognize that color.")
+        await ctx.send("Sorry Shikikan, I do not recognize that color.")
         return
 
     # Remove all color roles
