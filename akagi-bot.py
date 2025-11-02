@@ -1,6 +1,6 @@
-import discord, asyncio, sys, logging, requests
+import discord, asyncio, sys, logging, requests, traceback
 from discord.ext import commands
-from functools import wraps
+from get_image import GetImage
 
 #===================================================================================
 #=== Static definitions ============================================================
@@ -39,7 +39,6 @@ BOT_ADMINS = [
 #=== Environment configuration =====================================================
 #===================================================================================
 
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 if not logger.hasHandlers():
@@ -61,6 +60,8 @@ if len(sys.argv) == 2:
 
 bot = commands.Bot(command_prefix='a!', intents=intents, help_command=None)
 
+get_img = GetImage(logger)
+
 #===================================================================================
 #=== Core command code =============================================================
 #===================================================================================
@@ -68,14 +69,18 @@ bot = commands.Bot(command_prefix='a!', intents=intents, help_command=None)
 class LoggingWrapper(commands.Command):
     async def invoke(self, ctx):
         logger.info(f"User {ctx.author} invoked command '{ctx.message.content}'")
-        await super().invoke(ctx)
+        try:
+            await super().invoke(ctx)
+        except Exception as e:
+            st = traceback.format_exc()
+            await ctx.send(f"Oh dear, Shikikan-sama... I seem to have tripped while trying to service your request. I'm so sorry! Here are some details which might be of use:\n```{e}\n{st}```")
 
 @bot.event
 async def on_ready():
     logger.info(f'Bot is online as {bot.user}')
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
@@ -90,7 +95,7 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
-async def handle_jari_command(message):
+async def handle_jari_command(message: discord.Message):
     member = message.author
     roles = member.roles
     guild = message.guild
@@ -105,11 +110,11 @@ async def handle_jari_command(message):
         await message.channel.send("Sorry Shikikan, but you don't have the age role yet. Complete the birthyear form, or wait if you have.")
 
 @bot.command(cls=LoggingWrapper)
-async def help(ctx):
+async def help(ctx: commands.Context):
     await ctx.send("My current commands are: mute, color")
 
 @bot.command(cls=LoggingWrapper)
-async def mute(ctx, member: discord.Member = None, minutes: int = None):
+async def mute(ctx: commands.Context, member: discord.Member = None, minutes: int = None):
     if not (ctx.author.guild_permissions.administrator or MOD_ROLE_ID in [role.id for role in ctx.author.roles]):
         await ctx.send("Sorry Shikikan, but you aren't allowed to use this command.")
         return
@@ -133,7 +138,7 @@ async def mute(ctx, member: discord.Member = None, minutes: int = None):
     await log_channel.send(f"{member.name} has been unmuted.")
 
 @bot.command(cls=LoggingWrapper)
-async def color(ctx, color_name: str = None):
+async def color(ctx: commands.Context, color_name: str = None):
     member = ctx.author
     if ROLE_COMMODORE not in [role.id for role in member.roles]:
         await ctx.send("Sorry Shikikan, but only Commodore can change color.")
@@ -145,7 +150,7 @@ async def color(ctx, color_name: str = None):
 
     color_name = color_name.lower()
     if color_name not in COLOR_ROLES:
-        await ctx.send("Sorry shikikan, I do not recognize that color.")
+        await ctx.send("Sorry Shikikan, I do not recognize that color.")
         return
 
     # Remove all color roles
@@ -159,7 +164,7 @@ async def color(ctx, color_name: str = None):
     await ctx.send("There you go Shikikan, you look great in that color!")
 
 @bot.command(cls=LoggingWrapper)
-async def host(ctx):
+async def host(ctx: commands.Context):
     if ctx.guild is not None:
         return # this command can only be used in a DM
     if ctx.author.id not in BOT_ADMINS:
@@ -170,6 +175,18 @@ async def host(ctx):
     if response.status_code == 200:
         ip = response.text
         await ctx.send(f"Shikikan, I am currently located at: {ip}")
+
+@bot.command(cls=LoggingWrapper)
+async def get(ctx: commands.Context, arg = None):
+    if arg is None:
+        await ctx.send("Shikikan, you need to tell me which message to get, or how many recent embeds to retrieve.")
+    if arg.isdigit():
+        value = int(arg)
+        await get_img.get_img_from_history(ctx, value)
+    elif "discord.com/channels/" in arg:
+        await get_img.get_img_from_message_link(ctx, arg)
+    else:
+        await ctx.send("Shikikan, I don't understand your request.")
 
 #===================================================================================
 #=== Run the bot ===================================================================

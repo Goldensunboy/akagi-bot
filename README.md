@@ -34,3 +34,9 @@ Display IP address where the bot is running (requires administrator role):
 ```
 a!host
 ```
+
+Get and reupload images from N recent embed messages or a specific embed message:
+```
+a!get 5
+a!get <Message Link>
+```
