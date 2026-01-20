@@ -62,7 +62,7 @@ if len(sys.argv) == 2:
 bot = commands.Bot(command_prefix='a!', intents=intents, help_command=None)
 
 get_img = GetImage(logger)
-mc_connector = MinecraftConnector(logger)
+mc_connector = MinecraftConnector(bot, logger)
 
 #===================================================================================
 #=== Core command code =============================================================

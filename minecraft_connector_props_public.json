@@ -4,7 +4,8 @@
         "announcement_channel_id": 594987900764946471
     },
     "server": {
-        "world_path": "/path/to/minecraft/world"
+        "minecraft_home": "/path/to/minecraft/home",
+        "minecraft_world_name": "world"
     },
     "shared": {
         "update_interval_seconds": 20
