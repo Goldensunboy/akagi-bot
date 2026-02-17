@@ -130,6 +130,42 @@ class ConfiguredHTTPClient:
 ####   Server-side connector (runs on server.pro)   ##########
 ##############################################################
 
+first_time_announcements = {
+    "story/mine_diamond": "Diamonds!",
+    "story/enter_the_nether": "We Need to Go Deeper",
+    "story/shiny_gear": "Cover Me with Diamonds",
+    "story/follow_ender_eye": "Eye Spy",
+    "story/enter_the_end": "The End?",
+    "nether/obtain_ancient_debris": "Hidden in the Depths",
+    "nether/find_fortress": "A Terrible Fortress",
+    "nether/get_wither_skull": "Spooky Scary Skeleton",
+    "nether/explore_nether": "Hot Tourist Destinations",
+    "nether/create_beacon": "Bring Home the Beacon",
+    "end/kill_dragon": "Free the End",
+    "end/find_end_city": "The City at the End of the Game",
+    "adventure/hero_of_the_village": "Hero of the Village",
+    "adventure/totem_of_undying": "Postmortal",
+    "adventure/sniper_duel": "Sniper Duel",
+    "husbandry/silk_touch_nest": "Total Beelocation",
+    "husbandry/obtain_netherite_hoe": "Serious Dedication",
+    "end/elytra": "Sky's the Limit"
+}
+
+always_announcements = {
+    "nether/uneasy_alliance": "Uneasy Alliance",
+    "nether/netherite_armor": "Cover Me in Debris",
+    "nether/summon_wither": "Withering Heights",
+    "nether/all_potions": "A Furious Cocktail",
+    "nether/all_effects": "How Did We Get Here?",
+    "adventure/kill_all_mobs": "Monsters Hunted",
+    "adventure/arbalistic": "Arbalistic",
+    "adventure/adventuring_time": "Adventuring Time",
+    "adventure/very_very_frightening": "Very Very Frightening",
+    "husbandry/bred_all_animals": "Two by Two",
+    "husbandry/complete_catalogue": "A Complete Catalogue",
+    "husbandry/balanced_diet": "A Balanced Diet"
+}
+
 class MinecraftConnectorServer:
 
     def __init__(self, logger: Logger):
@@ -155,13 +191,55 @@ class MinecraftConnectorServer:
                 raise ValueError(msg)
 
     '''
+    Load player names from whitelist JSON file to map UUIDs to names in advancement messages
+    '''
+    def load_player_names(self) -> dict:
+        whitelist_path = path.join(self.server_props["minecraft_home"], "whitelist.json")
+        if path.exists(whitelist_path):
+            with open(whitelist_path, 'r') as f:
+                whitelist = json.load(f)
+                mapping = {entry["uuid"]: entry["name"] for entry in whitelist}
+                self.logger.info(f"Loaded {len(mapping)} player names from whitelist")
+                return mapping
+        else:
+            self.logger.warning(f"Whitelist file not found at {whitelist_path}, player names will not be resolved")
+            return {}
+    
+    '''
+    Load the list of advancements achieved by a player from their advancements JSON file
+    '''
+    def get_advancement_list(self, player_uuid: str) -> list:
+        advancements_path = path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements", f"{player_uuid}.json")
+        announcement_whitelist = first_time_announcements.keys().union(always_announcements.keys())
+        if path.exists(advancements_path):
+            with open(advancements_path, 'r') as f:
+                data = json.load(f)
+                return [k for k in data if k in announcement_whitelist and data[k].get("done", False)]
+        else:
+            self.logger.warning(f"Advancement file not found for player {player_uuid} at {advancements_path}")
+            return []
+
+    '''
     Initialize data structures for storing advancement messages
     The baseline set of messages is established at startup to avoid reporting old messages
     '''
     def get_initial_advancement_messages(self):
         self.msg_mutex = threading.Lock()
         self.messages = queue.Queue()
-        # TODO
+        self.player_advancements = {}
+        self.player_names = {}
+        self.already_achieved = set()
+
+        # Populate initial advancement lists for all players by reading advancements files, and store player names from whitelist
+        advancements_dir = path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements")
+        if path.exists(advancements_dir):
+            for filename in path.listdir(advancements_dir):
+                if filename.endswith(".json"):
+                    player_uuid = filename[:-5]
+                    player_advancements = set(self.get_advancement_list(player_uuid))
+                    self.already_achieved.update(player_advancements)
+
+        self.get_new_advancement_messages()
 
     '''
     Configure a cron job to periodically fetch new advancement messages from the world files
@@ -180,7 +258,44 @@ class MinecraftConnectorServer:
     with new messages from the Minecraft world files
     '''
     def get_new_advancement_messages(self):
-        pass
+        self.player_names = self.load_player_names()
+        advancements_dir = path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements")
+        if path.exists(advancements_dir):
+            for filename in path.listdir(advancements_dir):
+                if filename.endswith(".json"):
+
+                    # Get list of new advancements for this player by comparing current advancements in file to previously stored advancements
+                    player_uuid = filename[:-5]
+                    player_name = self.player_names.get(player_uuid, player_uuid)
+                    current_advancements = set(self.get_advancement_list(player_uuid))
+                    previous_advancements = self.player_advancements.get(player_uuid, set())
+                    new_advancements = current_advancements - previous_advancements
+
+                    # Create messages for any new advancements and add them to the queue, then update stored advancements for this player
+                    for adv in new_advancements:
+                        first_or_not_text = "is the first player to make"
+                        if adv in first_time_announcements:
+                            if adv not in self.already_achieved:
+                                self.msg_mutex.acquire()
+                                try:
+                                    self.messages.put(f"{player_name} {first_or_not_text} the advancement [{first_time_announcements[adv]}]")
+                                finally:
+                                    self.msg_mutex.release()
+                                self.already_achieved.add(adv)
+                        elif adv in always_announcements:
+                            if adv in self.already_achieved:
+                                first_or_not_text = "has made"
+                            self.msg_mutex.acquire()
+                            try:
+                                self.messages.put(f"{player_name} {first_or_not_text} the advancement [{always_announcements[adv]}]")
+                            finally:
+                                self.msg_mutex.release()
+                            self.already_achieved.add(adv)
+                        else:
+                            self.logger.warning(f"Advancement {adv} is not in either announcement list, skipping")
+                    self.player_advancements[player_uuid] = current_advancements
+        else:
+            self.logger.warning(f"Advancements directory not found at {advancements_dir}, no messages will be generated")
     
     '''
     Setup Flask routes for the HTTP server
