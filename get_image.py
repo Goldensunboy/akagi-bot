@@ -87,7 +87,7 @@ class GetImage:
 
     # Helper to get a message object from a Discord message URL
     async def get_message_from_url(self, ctx: commands.Context, url: str) -> discord.Message:
-        pattern = r"https://(?:(?:ptb|canary)\.)?discord\.com/channels/(\d+)/(\d+)/(\d+)(?:[/?#].*)?$"
+        pattern = r"https://(?:(?:ptb|canary)\.)?discord(?:app)?\.com/channels/(\d+)/(\d+)/(\d+)(?:[/?#].*)?$"
         match = re.match(pattern, url)
         if not match:
             self.logger.error(f"Invalid Discord message URL: {url}")
