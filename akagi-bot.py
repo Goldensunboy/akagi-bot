@@ -1,4 +1,4 @@
-import discord, asyncio, sys, logging, requests, traceback
+import discord, asyncio, sys, logging, requests, traceback, re
 from discord.ext import commands
 from get_image import GetImage
 from minecraft_connector import MinecraftConnector
@@ -35,6 +35,11 @@ BOT_ADMINS = [
     188646158636285952, # crocdent
     202142045114990592  # goldensunboy
 ]
+
+DISCORD_MESSAGE_URL_PATTERN = re.compile(
+    r"^<?https://(?:(?:ptb|canary)\.)?discord(?:app)?\.com/channels/\d+/\d+/\d+(?:[/?#].*)?>?$",
+    re.IGNORECASE,
+)
 
 #===================================================================================
 #=== Environment configuration =====================================================
@@ -185,10 +190,13 @@ async def get(ctx: commands.Context, arg = None):
     elif arg.isdigit():
         value = int(arg)
         await get_img.get_img_from_history(ctx, value)
-    elif "discord.com/channels/" in arg:
-        await get_img.get_img_from_message_link(ctx, arg)
     else:
-        await ctx.send("Shikikan, I don't understand your request.")
+        normalized_arg = arg.strip()
+        if DISCORD_MESSAGE_URL_PATTERN.match(normalized_arg):
+            normalized_arg = normalized_arg.removeprefix("<").removesuffix(">")
+            await get_img.get_img_from_message_link(ctx, normalized_arg)
+        else:
+            await ctx.send("Shikikan, I don't understand your request.")
 
 #===================================================================================
 #=== Run the bot ===================================================================
