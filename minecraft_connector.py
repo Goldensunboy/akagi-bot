@@ -278,7 +278,9 @@ class MinecraftConnectorServer:
                             if adv not in self.already_achieved:
                                 self.msg_mutex.acquire()
                                 try:
-                                    self.messages.put(f"{player_name} {first_or_not_text} the advancement [{first_time_announcements[adv]}]")
+                                    msg = f"{player_name} {first_or_not_text} the advancement [{first_time_announcements[adv]}]"
+                                    self.logger.info(f"Queuing new advancement message: {msg}")
+                                    self.messages.put(msg)
                                 finally:
                                     self.msg_mutex.release()
                                 self.already_achieved.add(adv)
@@ -287,7 +289,9 @@ class MinecraftConnectorServer:
                                 first_or_not_text = "has made"
                             self.msg_mutex.acquire()
                             try:
-                                self.messages.put(f"{player_name} {first_or_not_text} the advancement [{always_announcements[adv]}]")
+                                msg = f"{player_name} {first_or_not_text} the advancement [{always_announcements[adv]}]"
+                                self.logger.info(f"Queuing new advancement message: {msg}")
+                                self.messages.put(msg)
                             finally:
                                 self.msg_mutex.release()
                             self.already_achieved.add(adv)
@@ -327,3 +331,12 @@ class MinecraftConnectorServer:
         finally:
             self.msg_mutex.release()
         return messages
+
+#===================================================================================
+####   Server entry point   ########################################################
+#===================================================================================
+
+if __name__ == "__main__":
+    logger = Logger("MinecraftConnectorServer")
+    server = MinecraftConnectorServer(logger)
+    server.app.run(host="0.0.0.0", port=8080)
