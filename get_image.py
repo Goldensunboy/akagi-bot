@@ -15,19 +15,9 @@ class GetImage:
             await ctx.send("I'm sorry Shikikan, but I couldn't find that message.")
             return
         
-        embeds = msg.embeds
-
-        #========== TESTING
-
-        self.logger.info(f"Embeds found in message: {len(embeds)}")
-        for e in embeds:
-            self.logger.info(f"Embed: title={e.title}, image_url={e.image.url if e.image else 'None'}")
-
-        #==================
-
-        image_urls = [e.image.url for e in embeds if e.image is not None and e.image.url is not None]
+        image_urls = self.extract_image_urls_from_message(msg)
         if not image_urls:
-            await ctx.send("I'm sorry Shikikan, but I couldn't find any images in that message.")
+            await ctx.send("I'm sorry Shikikan, but I couldn't find any images in that message's embeds or attachments.")
             return
 
         await self.get_img_from_urls(ctx, image_urls)
@@ -41,30 +31,54 @@ class GetImage:
             return
 
         found = []
-        async for msg in ctx.channel.history(limit=1000):
-            if msg.embeds:
-                found.append(msg)
-                if len(found) >= lookback:
-                    break
+        try:
+            async for msg in ctx.channel.history(limit=1000, oldest_first=False):
+                if self.extract_image_urls_from_message(msg):
+                    found.append(msg)
+                    if len(found) >= lookback:
+                        break
+        except discord.Forbidden:
+            self.logger.error(f"Missing permission to read message history in channel ID: {ctx.channel.id}")
+            await ctx.send("I'm sorry Shikikan, but I don't have permission to read message history in this channel.")
+            return
+        except discord.HTTPException as e:
+            self.logger.error(f"Error reading message history in channel ID: {ctx.channel.id}, error: {e}")
+            await ctx.send("I'm sorry Shikikan, but I ran into an error while reading recent messages.")
+            return
 
         if not found:
-            await ctx.send("I'm sorry Shikikan, but I couldn't find any messages with embeds posted recently.")
+            await ctx.send("I'm sorry Shikikan, but I couldn't find any recent messages with images in embeds or attachments.")
             return
         
-        # Collect image URLs from embeds
+        # Collect image URLs from found messages
         image_urls = []
         for message in found:
-            for embed in message.embeds:
-                if embed.image and embed.image.url:
-                    image_urls.append(embed.image.url)
+            image_urls.extend(self.extract_image_urls_from_message(message))
         if len(image_urls) > 10:
             image_urls = image_urls[:10]
 
         if not image_urls:
-            await ctx.send("I'm sorry Shikikan, but I couldn't find any images in the embeds.")
+            await ctx.send("I'm sorry Shikikan, but I couldn't find any images in the recent messages.")
             return
         
         await self.get_img_from_urls(ctx, image_urls)
+
+    def extract_image_urls_from_message(self, msg: discord.Message) -> list:
+        image_urls = []
+
+        for embed in msg.embeds:
+            if embed.image and embed.image.url:
+                image_urls.append(embed.image.url)
+            if embed.thumbnail and embed.thumbnail.url:
+                image_urls.append(embed.thumbnail.url)
+
+        for attachment in msg.attachments:
+            is_image_content_type = attachment.content_type is not None and attachment.content_type.startswith("image/")
+            is_image_filename = attachment.filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"))
+            if is_image_content_type or is_image_filename:
+                image_urls.append(attachment.url)
+
+        return image_urls
 
     # Helper to download images and reupload them with a message
     async def get_img_from_urls(self, ctx: commands.Context, urls: list):
