@@ -1,6 +1,7 @@
 import discord, asyncio, sys, logging, requests, traceback
 from discord.ext import commands
 from get_image import GetImage
+from minecraft_connector import MinecraftConnector
 
 #===================================================================================
 #=== Static definitions ============================================================
@@ -61,6 +62,7 @@ if len(sys.argv) == 2:
 bot = commands.Bot(command_prefix='a!', intents=intents, help_command=None)
 
 get_img = GetImage(logger)
+mc_connector = MinecraftConnector(bot, logger)
 
 #===================================================================================
 #=== Core command code =============================================================
