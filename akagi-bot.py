@@ -182,7 +182,7 @@ async def host(ctx: commands.Context):
 async def get(ctx: commands.Context, arg = None):
     if arg is None:
         await ctx.send("Shikikan, you need to tell me which message to get, or how many recent embeds to retrieve.")
-    if arg.isdigit():
+    elif arg.isdigit():
         value = int(arg)
         await get_img.get_img_from_history(ctx, value)
     elif "discord.com/channels/" in arg:
