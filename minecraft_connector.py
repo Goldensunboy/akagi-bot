@@ -1,4 +1,4 @@
-import glob, os, json, flask, requests, threading, time, asyncio, queue
+import glob, os, json, flask, requests, threading, time, logging, asyncio, queue
 from logging import Logger
 
 ##############################################################
@@ -189,6 +189,7 @@ class MinecraftConnectorServer:
                 msg = f"Missing required Minecraft connector server property: {key}"
                 self.logger.error(msg)
                 raise ValueError(msg)
+        return props
 
     '''
     Load player names from whitelist JSON file to map UUIDs to names in advancement messages
@@ -210,7 +211,7 @@ class MinecraftConnectorServer:
     '''
     def get_advancement_list(self, player_uuid: str) -> list:
         advancements_path = os.path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements", f"{player_uuid}.json")
-        announcement_whitelist = first_time_announcements.keys().union(always_announcements.keys())
+        announcement_whitelist = set(first_time_announcements).union(set(always_announcements))
         if os.path.exists(advancements_path):
             with open(advancements_path, 'r') as f:
                 data = json.load(f)
@@ -236,8 +237,11 @@ class MinecraftConnectorServer:
             for filename in os.listdir(advancements_dir):
                 if filename.endswith(".json"):
                     player_uuid = filename[:-5]
-                    player_advancements = set(self.get_advancement_list(player_uuid))
-                    self.already_achieved.update(player_advancements)
+                    self.player_advancements[player_uuid] = self.get_advancement_list(player_uuid)
+                    self.already_achieved.update(self.player_advancements[player_uuid])
+        else:
+            self.logger.warning(f"Advancements directory not found at {advancements_dir}, no baseline will be established and all advancements will be reported as new on startup")
+        self.logger.info(f"Initial advancement messages established, {len(self.already_achieved)} advancements already achieved by players at startup")
 
         self.get_new_advancement_messages()
 
@@ -270,6 +274,8 @@ class MinecraftConnectorServer:
                     current_advancements = set(self.get_advancement_list(player_uuid))
                     previous_advancements = self.player_advancements.get(player_uuid, set())
                     new_advancements = current_advancements - previous_advancements
+
+                    self.logger.info(f"Player {player_name} has {len(new_advancements)} new advancements since last check")
 
                     # Create messages for any new advancements and add them to the queue, then update stored advancements for this player
                     for adv in new_advancements:
@@ -337,6 +343,13 @@ class MinecraftConnectorServer:
 #===================================================================================
 
 if __name__ == "__main__":
-    logger = Logger("MinecraftConnectorServer")
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    if not logger.hasHandlers():
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
     server = MinecraftConnectorServer(logger)
     server.app.run(host="0.0.0.0", port=8080)
