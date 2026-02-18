@@ -1,5 +1,6 @@
 import glob, os, json, flask, requests, threading, time, logging, asyncio, queue
 from logging import Logger
+from urllib3.exceptions import ConnectTimeoutError
 
 ##############################################################
 ####   Static functions   ####################################
@@ -119,7 +120,11 @@ class ConfiguredHTTPClient:
     self.auth_token is included in the Authorization header to act as a symmetric key
     '''
     def get(self, endpoint: str):
-        response = requests.get(f"http://{self.host}:{self.port}/{endpoint}", headers={"Authorization": self.auth_token})
+        try:
+            response = requests.get(f"http://{self.host}:{self.port}/{endpoint}", headers={"Authorization": self.auth_token}, timeout=5)
+        except ConnectTimeoutError:
+            self.logger.warning(f"Minecraft server connector not detected at {self.host}:{self.port} (timed out)")
+            return None
         if response.status_code == 200:
             return response.json()
         else:
@@ -131,39 +136,39 @@ class ConfiguredHTTPClient:
 ##############################################################
 
 first_time_announcements = {
-    "story/mine_diamond": "Diamonds!",
-    "story/enter_the_nether": "We Need to Go Deeper",
-    "story/shiny_gear": "Cover Me with Diamonds",
-    "story/follow_ender_eye": "Eye Spy",
-    "story/enter_the_end": "The End?",
-    "nether/obtain_ancient_debris": "Hidden in the Depths",
-    "nether/find_fortress": "A Terrible Fortress",
-    "nether/get_wither_skull": "Spooky Scary Skeleton",
-    "nether/explore_nether": "Hot Tourist Destinations",
-    "nether/create_beacon": "Bring Home the Beacon",
-    "end/kill_dragon": "Free the End",
-    "end/find_end_city": "The City at the End of the Game",
-    "adventure/hero_of_the_village": "Hero of the Village",
-    "adventure/totem_of_undying": "Postmortal",
-    "adventure/sniper_duel": "Sniper Duel",
-    "husbandry/silk_touch_nest": "Total Beelocation",
-    "husbandry/obtain_netherite_hoe": "Serious Dedication",
-    "end/elytra": "Sky's the Limit"
+    "minecraft:story/mine_diamond": "Diamonds!",
+    "minecraft:story/enter_the_nether": "We Need to Go Deeper",
+    "minecraft:story/shiny_gear": "Cover Me with Diamonds",
+    "minecraft:story/follow_ender_eye": "Eye Spy",
+    "minecraft:story/enter_the_end": "The End?",
+    "minecraft:nether/obtain_ancient_debris": "Hidden in the Depths",
+    "minecraft:nether/find_fortress": "A Terrible Fortress",
+    "minecraft:nether/get_wither_skull": "Spooky Scary Skeleton",
+    "minecraft:nether/explore_nether": "Hot Tourist Destinations",
+    "minecraft:nether/create_beacon": "Bring Home the Beacon",
+    "minecraft:end/kill_dragon": "Free the End",
+    "minecraft:end/find_end_city": "The City at the End of the Game",
+    "minecraft:adventure/hero_of_the_village": "Hero of the Village",
+    "minecraft:adventure/totem_of_undying": "Postmortal",
+    "minecraft:adventure/sniper_duel": "Sniper Duel",
+    "minecraft:husbandry/silk_touch_nest": "Total Beelocation",
+    "minecraft:husbandry/obtain_netherite_hoe": "Serious Dedication",
+    "minecraft:end/elytra": "Sky's the Limit"
 }
 
 always_announcements = {
-    "nether/uneasy_alliance": "Uneasy Alliance",
-    "nether/netherite_armor": "Cover Me in Debris",
-    "nether/summon_wither": "Withering Heights",
-    "nether/all_potions": "A Furious Cocktail",
-    "nether/all_effects": "How Did We Get Here?",
-    "adventure/kill_all_mobs": "Monsters Hunted",
-    "adventure/arbalistic": "Arbalistic",
-    "adventure/adventuring_time": "Adventuring Time",
-    "adventure/very_very_frightening": "Very Very Frightening",
-    "husbandry/bred_all_animals": "Two by Two",
-    "husbandry/complete_catalogue": "A Complete Catalogue",
-    "husbandry/balanced_diet": "A Balanced Diet"
+    "minecraft:nether/uneasy_alliance": "Uneasy Alliance",
+    "minecraft:nether/netherite_armor": "Cover Me in Debris",
+    "minecraft:nether/summon_wither": "Withering Heights",
+    "minecraft:nether/all_potions": "A Furious Cocktail",
+    "minecraft:nether/all_effects": "How Did We Get Here?",
+    "minecraft:adventure/kill_all_mobs": "Monsters Hunted",
+    "minecraft:adventure/arbalistic": "Arbalistic",
+    "minecraft:adventure/adventuring_time": "Adventuring Time",
+    "minecraft:adventure/very_very_frightening": "Very Very Frightening",
+    "minecraft:husbandry/bred_all_animals": "Two by Two",
+    "minecraft:husbandry/complete_catalogue": "A Complete Catalogue",
+    "minecraft:husbandry/balanced_diet": "A Balanced Diet"
 }
 
 class MinecraftConnectorServer:
@@ -237,7 +242,7 @@ class MinecraftConnectorServer:
             for filename in os.listdir(advancements_dir):
                 if filename.endswith(".json"):
                     player_uuid = filename[:-5]
-                    self.player_advancements[player_uuid] = self.get_advancement_list(player_uuid)
+                    self.player_advancements[player_uuid] = set(self.get_advancement_list(player_uuid))
                     self.already_achieved.update(self.player_advancements[player_uuid])
         else:
             self.logger.warning(f"Advancements directory not found at {advancements_dir}, no baseline will be established and all advancements will be reported as new on startup")
@@ -272,7 +277,7 @@ class MinecraftConnectorServer:
                     player_uuid = filename[:-5]
                     player_name = self.player_names.get(player_uuid, player_uuid)
                     current_advancements = set(self.get_advancement_list(player_uuid))
-                    previous_advancements = self.player_advancements.get(player_uuid, set())
+                    previous_advancements = set(self.player_advancements.get(player_uuid, set()))
                     new_advancements = current_advancements - previous_advancements
 
                     self.logger.info(f"Player {player_name} has {len(new_advancements)} new advancements since last check")
