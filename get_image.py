@@ -16,6 +16,15 @@ class GetImage:
             return
         
         embeds = msg.embeds
+
+        #========== TESTING
+
+        self.logger.debug(f"Embeds found in message: {len(embeds)}")
+        for e in embeds:
+            self.logger.debug(f"Embed: title={e.title}, image_url={e.image.url if e.image else 'None'}")
+
+        #==================
+
         image_urls = [e.image.url for e in embeds if e.image is not None and e.image.url is not None]
         if not image_urls:
             await ctx.send("I'm sorry Shikikan, but I couldn't find any images in that message.")

@@ -41,7 +41,7 @@ BOT_ADMINS = [
 #===================================================================================
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 if not logger.hasHandlers():
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.INFO)
