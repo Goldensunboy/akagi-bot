@@ -1,4 +1,4 @@
-import path, json, flask, requests, threading, time, asyncio, queue
+import glob, os, json, flask, requests, threading, time, asyncio, queue
 from logging import Logger
 
 ##############################################################
@@ -12,7 +12,7 @@ Attributes from all matching properties files are coalesced,
 as well as shared and role-specific sections.
 '''
 def load_props(role: str, logger: Logger):
-    props_files = path.glob(props_file_pattern)
+    props_files = glob.glob(props_file_pattern)
     combined_props = {}
     for pf in props_files:
         logger.info(f"Loading Minecraft connector properties from {pf}")
@@ -194,8 +194,8 @@ class MinecraftConnectorServer:
     Load player names from whitelist JSON file to map UUIDs to names in advancement messages
     '''
     def load_player_names(self) -> dict:
-        whitelist_path = path.join(self.server_props["minecraft_home"], "whitelist.json")
-        if path.exists(whitelist_path):
+        whitelist_path = os.path.join(self.server_props["minecraft_home"], "whitelist.json")
+        if os.path.exists(whitelist_path):
             with open(whitelist_path, 'r') as f:
                 whitelist = json.load(f)
                 mapping = {entry["uuid"]: entry["name"] for entry in whitelist}
@@ -209,9 +209,9 @@ class MinecraftConnectorServer:
     Load the list of advancements achieved by a player from their advancements JSON file
     '''
     def get_advancement_list(self, player_uuid: str) -> list:
-        advancements_path = path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements", f"{player_uuid}.json")
+        advancements_path = os.path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements", f"{player_uuid}.json")
         announcement_whitelist = first_time_announcements.keys().union(always_announcements.keys())
-        if path.exists(advancements_path):
+        if os.path.exists(advancements_path):
             with open(advancements_path, 'r') as f:
                 data = json.load(f)
                 return [k for k in data if k in announcement_whitelist and data[k].get("done", False)]
@@ -231,9 +231,9 @@ class MinecraftConnectorServer:
         self.already_achieved = set()
 
         # Populate initial advancement lists for all players by reading advancements files, and store player names from whitelist
-        advancements_dir = path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements")
-        if path.exists(advancements_dir):
-            for filename in path.listdir(advancements_dir):
+        advancements_dir = os.path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements")
+        if os.path.exists(advancements_dir):
+            for filename in os.listdir(advancements_dir):
                 if filename.endswith(".json"):
                     player_uuid = filename[:-5]
                     player_advancements = set(self.get_advancement_list(player_uuid))
@@ -259,9 +259,9 @@ class MinecraftConnectorServer:
     '''
     def get_new_advancement_messages(self):
         self.player_names = self.load_player_names()
-        advancements_dir = path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements")
-        if path.exists(advancements_dir):
-            for filename in path.listdir(advancements_dir):
+        advancements_dir = os.path.join(self.server_props["minecraft_home"], self.server_props["minecraft_world_name"], "advancements")
+        if os.path.exists(advancements_dir):
+            for filename in os.listdir(advancements_dir):
                 if filename.endswith(".json"):
 
                     # Get list of new advancements for this player by comparing current advancements in file to previously stored advancements
