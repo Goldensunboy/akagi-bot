@@ -123,7 +123,7 @@ class ConfiguredHTTPClient:
         try:
             response = requests.get(f"http://{self.host}:{self.port}/{endpoint}", headers={"Authorization": self.auth_token}, timeout=5)
         except ConnectTimeout:
-            self.logger.warning(f"Minecraft server connector not detected at {self.host}:{self.port} (timed out)")
+            self.logger.debug(f"Minecraft server connector not detected at {self.host}:{self.port} (timed out)")
             return None
         if response.status_code == 200:
             return response.json()
@@ -205,7 +205,7 @@ class MinecraftConnectorServer:
             with open(whitelist_path, 'r') as f:
                 whitelist = json.load(f)
                 mapping = {entry["uuid"]: entry["name"] for entry in whitelist}
-                self.logger.info(f"Loaded {len(mapping)} player names from whitelist")
+                self.logger.debug(f"Loaded {len(mapping)} player names from whitelist")
                 return mapping
         else:
             self.logger.warning(f"Whitelist file not found at {whitelist_path}, player names will not be resolved")
@@ -280,7 +280,7 @@ class MinecraftConnectorServer:
                     previous_advancements = set(self.player_advancements.get(player_uuid, set()))
                     new_advancements = current_advancements - previous_advancements
 
-                    self.logger.info(f"Player {player_name} has {len(new_advancements)} new advancements since last check")
+                    self.logger.debug(f"Player {player_name} has {len(new_advancements)} new advancements since last check")
 
                     # Create messages for any new advancements and add them to the queue, then update stored advancements for this player
                     for adv in new_advancements:
@@ -289,7 +289,7 @@ class MinecraftConnectorServer:
                             if adv not in self.already_achieved:
                                 self.msg_mutex.acquire()
                                 try:
-                                    msg = f"{player_name} {first_or_not_text} the advancement [{first_time_announcements[adv]}]"
+                                    msg = f"{player_name} {first_or_not_text} the advancement **[{first_time_announcements[adv]}]**"
                                     self.logger.info(f"Queuing new advancement message: {msg}")
                                     self.messages.put(msg)
                                 finally:
@@ -300,7 +300,7 @@ class MinecraftConnectorServer:
                                 first_or_not_text = "has made"
                             self.msg_mutex.acquire()
                             try:
-                                msg = f"{player_name} {first_or_not_text} the advancement [{always_announcements[adv]}]"
+                                msg = f"{player_name} {first_or_not_text} the advancement **[{always_announcements[adv]}]**"
                                 self.logger.info(f"Queuing new advancement message: {msg}")
                                 self.messages.put(msg)
                             finally:

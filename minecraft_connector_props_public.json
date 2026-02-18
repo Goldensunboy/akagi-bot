@@ -1,10 +1,9 @@
 {
     "client": {
         "server_port": 8080,
-        "announcement_channel_id": 809960074809311243
+        "announcement_channel_id": 594987900764946471
     },
     "server": {
-        "minecraft_home": "C:\\Users\\Andrew\\Documents\\FoxCo Vanilla Feb 2026",
         "minecraft_world_name": "isekai_s9"
     },
     "shared": {
