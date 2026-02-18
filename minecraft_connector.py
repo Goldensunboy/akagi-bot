@@ -1,6 +1,6 @@
 import glob, os, json, flask, requests, threading, time, logging, asyncio, queue
 from logging import Logger
-from urllib3.exceptions import ConnectTimeoutError
+from requests.exceptions import ConnectTimeout
 
 ##############################################################
 ####   Static functions   ####################################
@@ -122,7 +122,7 @@ class ConfiguredHTTPClient:
     def get(self, endpoint: str):
         try:
             response = requests.get(f"http://{self.host}:{self.port}/{endpoint}", headers={"Authorization": self.auth_token}, timeout=5)
-        except ConnectTimeoutError:
+        except ConnectTimeout:
             self.logger.warning(f"Minecraft server connector not detected at {self.host}:{self.port} (timed out)")
             return None
         if response.status_code == 200:
