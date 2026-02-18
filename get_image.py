@@ -93,6 +93,11 @@ class GetImage:
             self.logger.error(f"Invalid Discord message URL: {url}")
             return None
         guild_id, channel_id, message_id = match.groups()
+
+# ========== TESTING
+        self.logger.debug(f"Parsed URL - Guild ID: {guild_id}, Channel ID: {channel_id}, Message ID: {message_id}")
+# ==========    
+
         guild = ctx.bot.get_guild(int(guild_id))
         if not guild:
             self.logger.error(f"Guild not found for ID: {guild_id}")
