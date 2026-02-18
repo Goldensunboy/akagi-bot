@@ -87,29 +87,57 @@ class GetImage:
 
     # Helper to get a message object from a Discord message URL
     async def get_message_from_url(self, ctx: commands.Context, url: str) -> discord.Message:
-        pattern = r"https://discord\.com/channels/(\d+)/(\d+)/(\d+)"
+        pattern = r"https://(?:(?:ptb|canary)\.)?discord\.com/channels/(\d+)/(\d+)/(\d+)(?:[/?#].*)?$"
         match = re.match(pattern, url)
         if not match:
             self.logger.error(f"Invalid Discord message URL: {url}")
             return None
-        guild_id, channel_id, message_id = match.groups()
-
-# ========== TESTING
-        self.logger.info(f"Parsed URL - Guild ID: {guild_id}, Channel ID: {channel_id}, Message ID: {message_id}")
-# ==========    
+        guild_id, channel_id, message_id = match.groups() 
 
         guild = ctx.bot.get_guild(int(guild_id))
         if not guild:
-            self.logger.error(f"Guild not found for ID: {guild_id}")
-            return None
-        channel = guild.get_channel(int(channel_id))
+            try:
+                guild = await ctx.bot.fetch_guild(int(guild_id))
+            except discord.NotFound:
+                self.logger.error(f"Guild not found for ID: {guild_id}")
+                return None
+            except discord.Forbidden:
+                self.logger.error(f"Missing permission to fetch guild for ID: {guild_id}")
+                return None
+            except discord.HTTPException as e:
+                self.logger.error(f"Error fetching guild from ID: {guild_id}, error: {e}")
+                return None
+            
+        channel_id_int = int(channel_id)
+        channel = guild.get_channel(channel_id_int)
+        if channel is None and hasattr(guild, "get_thread"):
+            channel = guild.get_thread(channel_id_int)
+        if channel is None:
+            try:
+                channel = await ctx.bot.fetch_channel(channel_id_int)
+            except discord.NotFound:
+                self.logger.error(f"Channel not found for ID: {channel_id}")
+                return None
+            except discord.Forbidden:
+                self.logger.error(f"Missing permission to fetch channel for ID: {channel_id}")
+                return None
+            except discord.HTTPException as e:
+                self.logger.error(f"Error fetching channel from ID: {channel_id}, error: {e}")
+                return None
+
         if not channel:
             self.logger.error(f"Channel not found for ID: {channel_id}")
             return None
         try:
             message = await channel.fetch_message(int(message_id))
             return message
-        except Exception as e:
+        except discord.NotFound:
+            self.logger.error(f"Message not found for ID: {message_id}")
+            return None
+        except discord.Forbidden:
+            self.logger.error(f"Missing permission to fetch message for ID: {message_id}")
+            return None
+        except discord.HTTPException as e:
             self.logger.error(f"Error fetching message from id: {message_id}, error: {e}")
             return None
     
