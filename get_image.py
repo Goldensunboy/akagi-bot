@@ -19,9 +19,9 @@ class GetImage:
 
         #========== TESTING
 
-        self.logger.debug(f"Embeds found in message: {len(embeds)}")
+        self.logger.info(f"Embeds found in message: {len(embeds)}")
         for e in embeds:
-            self.logger.debug(f"Embed: title={e.title}, image_url={e.image.url if e.image else 'None'}")
+            self.logger.info(f"Embed: title={e.title}, image_url={e.image.url if e.image else 'None'}")
 
         #==================
 
@@ -95,7 +95,7 @@ class GetImage:
         guild_id, channel_id, message_id = match.groups()
 
 # ========== TESTING
-        self.logger.debug(f"Parsed URL - Guild ID: {guild_id}, Channel ID: {channel_id}, Message ID: {message_id}")
+        self.logger.info(f"Parsed URL - Guild ID: {guild_id}, Channel ID: {channel_id}, Message ID: {message_id}")
 # ==========    
 
         guild = ctx.bot.get_guild(int(guild_id))
