@@ -17,6 +17,7 @@ a!color red
 a!color cyan
 a!color blue
 a!color green
+a!color pink
 ```
 
 Mute someone for 5 minutes (requires administrator role):
