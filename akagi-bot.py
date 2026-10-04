@@ -122,13 +122,19 @@ async def help(ctx: commands.Context):
     await ctx.send("My current commands are: mute, color")
 
 @bot.command(cls=LoggingWrapper)
-async def mute(ctx: commands.Context, member: discord.Member = None, minutes: int = None):
+async def mute(ctx: commands.Context, member_name: str = None, minutes: int = None):
     if not (ctx.author.guild_permissions.administrator or MOD_ROLE_ID in [role.id for role in ctx.author.roles]):
         await ctx.send("Sorry Shikikan, but you aren't allowed to use this command.")
         return
 
-    if not member or not minutes:
+    if not member_name or not minutes:
         await ctx.send("Shikikan, you need to mention a user and provide a duration!")
+        return
+
+    try:
+        member = await commands.MemberConverter().convert(ctx, member_name)
+    except commands.MemberNotFound:
+        await ctx.send("Sorry Shikikan, I couldn't find that user.")
         return
 
     if minutes < 1:
